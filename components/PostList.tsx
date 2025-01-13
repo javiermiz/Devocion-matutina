@@ -74,6 +74,7 @@ export default function PostList({ initialPosts }: PostListProps) {
       if (!response.ok) throw new Error('Error fetching posts');
 
       const data = await response.json();
+
       setPosts(pageNum === 1 ? data : (prevPosts) => [...prevPosts, ...data]);
       setPage(pageNum);
     } catch (error) {
