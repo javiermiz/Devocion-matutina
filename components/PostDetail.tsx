@@ -1,64 +1,15 @@
 // components/PostDetail.tsx
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { API_URL } from '@/lib/constants';
-import { processTitle, cleanContent } from '@/lib/content-utils';
-
-interface Post {
-  id: number;
-  title: { rendered: string };
-  content: { rendered: string };
-}
+import { processTitle } from '@/lib/content-utils';
 
 interface PostDetailProps {
-  id: number;
-  initialPost?: Post;
+  post: {
+    title: { rendered: string };
+    content: { rendered: string };
+  };
+  cleanedContent: string;
 }
 
-export default function PostDetail({ id, initialPost }: PostDetailProps) {
-  const [post, setPost] = useState<Post | null>(initialPost || null);
-  const [isLoading, setIsLoading] = useState(!initialPost);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!initialPost) {
-      const fetchPost = async () => {
-        try {
-          setIsLoading(true);
-          setError(null);
-          const response = await fetch(`${API_URL}/posts/${id}?_embed`);
-
-          if (!response.ok) {
-            throw new Error('Error fetching post');
-          }
-
-          const data = await response.json();
-          const { title } = processTitle(data.title.rendered);
-          data.content.rendered = cleanContent(data.content.rendered, title);
-          setPost(data);
-        } catch (error) {
-          console.error('Error fetching post:', error);
-          setError('Error cargando el contenido');
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchPost();
-    }
-  }, [id, initialPost]);
-
-  if (error) {
-    return <div className='text-red-500'>{error}</div>;
-  }
-
-  if (isLoading) {
-    return <div className='text-gray-500'>Cargando...</div>;
-  }
-
-  if (!post) return null;
-
+export default function PostDetail({ post, cleanedContent }: PostDetailProps) {
   const { audience, title } = processTitle(post.title.rendered);
 
   return (
@@ -84,7 +35,7 @@ export default function PostDetail({ id, initialPost }: PostDetailProps) {
                   prose-strong:font-medium prose-strong:text-gray-900
                   prose-ul:my-6 prose-li:my-2
                   [&_iframe]:w-full'
-        dangerouslySetInnerHTML={{ __html: post.content.rendered }}
+        dangerouslySetInnerHTML={{ __html: cleanedContent }}
       />
     </article>
   );

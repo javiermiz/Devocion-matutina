@@ -1,4 +1,6 @@
 // lib/content-utils.ts
+import { JSDOM } from 'jsdom';
+
 export interface ProcessedTitle {
   audience: string;
   title: string;
@@ -13,8 +15,8 @@ export function processTitle(fullTitle: string): ProcessedTitle {
 }
 
 export function cleanHTML(html: string): string {
-  // Creamos un div temporal para parsear el HTML
-  const tempDiv = document.createElement('div');
+  const dom = new JSDOM(html);
+  const tempDiv = dom.window.document.createElement('div');
   tempDiv.innerHTML = html;
 
   // Función auxiliar para eliminar elementos basados en un selector
@@ -68,14 +70,15 @@ export function cleanHTML(html: string): string {
 }
 
 export function cleanContent(content: string, mainTitle: string): string {
-  // Primero limpiamos el HTML usando el DOM
+  // Primero limpiamos el HTML usando jsdom
   const cleanedContent = cleanHTML(content);
 
   // Detectar y eliminar el patrón ========== y todo lo que sigue
   const parts = cleanedContent.split(/={10,}/);
-  const contentBeforePattern = parts[0]; // Nos quedamos solo con el contenido antes del patrón
+  const contentBeforePattern = parts[0];
 
-  const tempDiv = document.createElement('div');
+  const dom = new JSDOM(contentBeforePattern);
+  const tempDiv = dom.window.document.createElement('div');
   tempDiv.innerHTML = contentBeforePattern;
 
   // Remover headings específicos
@@ -94,7 +97,7 @@ export function cleanContent(content: string, mainTitle: string): string {
     const content = heading.textContent || '';
     const words = content.split(/\s+/).length;
     if (words > 20 || content.length > 150) {
-      const p = document.createElement('p');
+      const p = dom.window.document.createElement('p');
       p.textContent = content;
       heading.replaceWith(p);
     }

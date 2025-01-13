@@ -16,10 +16,9 @@ export default async function Post({ params }: { params: { id: string } }) {
     }
 
     const post = await response.json();
-    const { title } = processTitle(post.title.rendered);
 
-    // Procesar el contenido en el servidor
-    post.content.rendered = cleanContent(post.content.rendered, title);
+    const { title } = processTitle(post.title.rendered);
+    const cleanedContent = cleanContent(post.content.rendered, title);
 
     return (
       <main className='bg-white min-h-screen'>
@@ -37,11 +36,12 @@ export default async function Post({ params }: { params: { id: string } }) {
           </div>
         </header>
 
-        <PostDetail initialPost={post} id={parseInt(params.id)} />
+        <PostDetail post={post} cleanedContent={cleanedContent} />
       </main>
     );
   } catch (error) {
-    console.error('Error fetching initial post:', error);
+    console.log(error);
+
     return (
       <main className='bg-white min-h-screen'>
         <header className='bg-white border-b border-gray-200'>
@@ -58,7 +58,9 @@ export default async function Post({ params }: { params: { id: string } }) {
           </div>
         </header>
 
-        <PostDetail id={parseInt(params.id)} />
+        <div className='container mx-auto max-w-2xl px-4 py-4 lg:py-16'>
+          <div className='text-red-500'>Error cargando el contenido</div>
+        </div>
       </main>
     );
   }
