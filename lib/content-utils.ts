@@ -13,69 +13,92 @@ export function processTitle(fullTitle: string): ProcessedTitle {
 }
 
 export function cleanHTML(html: string): string {
-  // Remover elementos no deseados usando regex
+  // Creamos un div temporal para parsear el HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+
+  // Función auxiliar para eliminar elementos basados en un selector
+  const removeElements = (selector: string) => {
+    tempDiv.querySelectorAll(selector).forEach((el) => el.remove());
+  };
+
+  // Remover elementos específicos
   const removePatterns = [
-    /<div[^>]*id="attachment_[^>]*>.*?<\/div>/g,
-    /<div[^>]*class="wp-caption[^>]*>.*?<\/div>/g,
-    /<div[^>]*class="wp-block-latest-posts[^>]*>.*?<\/div>/g,
-    /<div[^>]*class="wp-block-separator[^>]*>.*?<\/div>/g,
-    /<div[^>]*class="bawpvc-ajax-counter[^>]*>.*?<\/div>/g,
-    /<div[^>]*class="d_reactions[^>]*>.*?<\/div>/g,
-    /<hr[^>]*>/g,
-    /<div[^>]*class="wp-caption-text[^>]*>.*?<\/div>/g,
+    '[id^="attachment_"]',
+    '.wp-caption',
+    '.wp-block-latest-posts',
+    '.wp-block-separator',
+    '.bawpvc-ajax-counter',
+    '.d_reactions',
+    'hr',
+    '.wp-caption-text',
+    '.soundcloud-wrapper',
+    'iframe[src*="soundcloud.com"]',
   ];
 
-  let cleanedHTML = html;
-  removePatterns.forEach((pattern) => {
-    cleanedHTML = cleanedHTML.replace(pattern, '');
+  // Eliminar elementos según los patrones
+  removePatterns.forEach((pattern) => removeElements(pattern));
+
+  // Eliminar divs que contienen enlaces de Soundcloud
+  tempDiv.querySelectorAll('div').forEach((div) => {
+    const soundcloudLinks = div.querySelectorAll('a[href*="soundcloud.com"]');
+    if (soundcloudLinks.length > 0) {
+      div.remove();
+    }
   });
 
-  // Limpiar estilos inline
-  cleanedHTML = cleanedHTML.replace(/\s+style="[^"]*"/g, '');
+  // Eliminar listas que contienen enlaces a devocionmatutina.com
+  tempDiv.querySelectorAll('ul').forEach((ul) => {
+    const devotionalLinks = ul.querySelectorAll(
+      'a[href*="devocionmatutina.com"]'
+    );
+    if (devotionalLinks.length > 0) {
+      ul.remove();
+    }
+  });
 
-  // Limpiar clases
-  cleanedHTML = cleanedHTML.replace(/\s+class="[^"]*"/g, '');
+  // Limpiar atributos innecesarios de los elementos restantes
+  tempDiv.querySelectorAll('*').forEach((el) => {
+    el.removeAttribute('style');
+    el.removeAttribute('class');
+    el.removeAttribute('id');
+  });
 
-  // Limpiar IDs
-  cleanedHTML = cleanedHTML.replace(/\s+id="[^"]*"/g, '');
-
-  // Procesar iframes de SoundCloud
-  cleanedHTML = cleanedHTML
-    .replace(
-      /(<iframe[^>]*soundcloud\.com[^>]*>)/g,
-      '<div class="soundcloud-wrapper">$1'
-    )
-    .replace(/(<iframe[^>]*soundcloud\.com[^>]*>.*?<\/iframe>)/g, '$1</div>');
-
-  return cleanedHTML;
+  return tempDiv.innerHTML;
 }
 
 export function cleanContent(content: string, mainTitle: string): string {
-  // Primero limpiamos el HTML
-  let cleanedContent = cleanHTML(content);
+  // Primero limpiamos el HTML usando el DOM
+  const cleanedContent = cleanHTML(content);
 
-  // Remover headings específicos usando regex
-  const headingPatterns = [
-    new RegExp(`<h[1-6][^>]*>${mainTitle}<\/h[1-6]>`, 'gi'),
-    /<h[1-6][^>]*>.*?devoción matutina.*?<\/h[1-6]>/gi,
-    /<h[1-6][^>]*>={3,}<\/h[1-6]>/gi,
-  ];
+  // Detectar y eliminar el patrón ========== y todo lo que sigue
+  const parts = cleanedContent.split(/={10,}/);
+  const contentBeforePattern = parts[0]; // Nos quedamos solo con el contenido antes del patrón
 
-  headingPatterns.forEach((pattern) => {
-    cleanedContent = cleanedContent.replace(pattern, '');
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = contentBeforePattern;
+
+  // Remover headings específicos
+  tempDiv.querySelectorAll('h1, h2').forEach((heading) => {
+    const text = heading.textContent?.toLowerCase() || '';
+    if (
+      text === mainTitle.toLowerCase() ||
+      text.includes('devoción matutina')
+    ) {
+      heading.remove();
+    }
   });
 
   // Convertir headings largos en párrafos
-  cleanedContent = cleanedContent.replace(
-    /<h([1-6])[^>]*>((?:(?!<\/h\1>).)*?)<\/h\1>/gi,
-    (match, level, content) => {
-      const words = content.split(/\s+/).length;
-      if (words > 20 || content.length > 150) {
-        return `<p>${content}</p>`;
-      }
-      return match;
+  tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((heading) => {
+    const content = heading.textContent || '';
+    const words = content.split(/\s+/).length;
+    if (words > 20 || content.length > 150) {
+      const p = document.createElement('p');
+      p.textContent = content;
+      heading.replaceWith(p);
     }
-  );
+  });
 
-  return cleanedContent;
+  return tempDiv.innerHTML;
 }
